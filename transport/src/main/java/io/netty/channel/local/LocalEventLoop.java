@@ -16,13 +16,17 @@
 package io.netty.channel.local;
 
 import io.netty.channel.Channel;
+import io.netty.channel.EventLoop;
 import io.netty.channel.EventLoopGroup;
-import io.netty.channel.SingleThreadEventLoop;
+import io.netty.util.concurrent.RejectedExecutionHandler;
+import io.netty.util.concurrent.SingleThreadEventExecutor;
 import io.netty.util.internal.StringUtil;
 
 import java.util.concurrent.Executor;
 
-class LocalEventLoop extends SingleThreadEventLoop {
+class LocalEventLoop extends SingleThreadEventExecutor implements EventLoop {
+
+    static final int DEFAULT_MAX_PENDING_EXECUTOR_TASKS = SingleThreadEventExecutor.DEFAULT_MAX_PENDING_EXECUTOR_TASKS;
 
     private static LocalChannelUnsafe cast(Channel channel) {
         Channel.Unsafe unsafe = channel.unsafe();
@@ -46,8 +50,9 @@ class LocalEventLoop extends SingleThreadEventLoop {
         }
     };
 
-    LocalEventLoop(EventLoopGroup parent, Executor executor) {
-        super(parent, executor, true);
+    LocalEventLoop(EventLoopGroup parent, Executor executor,
+                   int maxTasks, RejectedExecutionHandler rejectedExecutionHandler) {
+        super(parent, executor, maxTasks, rejectedExecutionHandler);
     }
 
     @Override
@@ -56,17 +61,12 @@ class LocalEventLoop extends SingleThreadEventLoop {
     }
 
     @Override
-    protected void run() {
-        for (;;) {
-            Runnable task = takeTask();
-            if (task != null) {
-                task.run();
-                updateLastExecutionTime();
-            }
+    public EventLoopGroup parent() {
+        return (EventLoopGroup) super.parent();
+    }
 
-            if (confirmShutdown()) {
-                break;
-            }
-        }
+    @Override
+    public EventLoop next() {
+        return (EventLoop) super.next();
     }
 }
